@@ -1,0 +1,16 @@
+[
+{
+  "modid": "archaeocraft",
+  "name": "ArchaeoCraft",
+  "description": "ArchaeoCraft!",
+  "version": "Alpha 0.0.1",
+  "mcversion": "${mcversion}",
+  "url": "",
+  "updateUrl": "",
+  "authorList": ["Dunkleosteus"],
+  "credits": "The Forge and FML guys, for making Forge",
+  "logoFile": "",
+  "screenshots": [],
+  "dependencies": []
+}
+]
