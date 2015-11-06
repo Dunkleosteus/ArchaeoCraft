@@ -125,6 +125,7 @@ public final class ArchaeoHarvestFix
 			ArchaeoItem.flintHatchet.setHarvestLevel("hatchet",  ArchaeoHarvestLevel._1_flint);
 			ArchaeoItem.bonePick.setHarvestLevel("pickaxe", ArchaeoHarvestLevel._0_bone);
 			ArchaeoItem.copperPickaxe.setHarvestLevel("pickaxe",ArchaeoHarvestLevel._2_copper);
+			ArchaeoItem.bronzeChisel.setHarvestLevel("pickaxe",ArchaeoHarvestLevel._3_bronze);
 	    }
 
 	    public static int getUpdatedHarvestLevel(int old)

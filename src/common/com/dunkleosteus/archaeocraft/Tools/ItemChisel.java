@@ -12,6 +12,7 @@ import net.minecraft.block.material.Material;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemHoe;
 import net.minecraft.item.ItemPickaxe;
 import net.minecraft.item.ItemStack;
@@ -22,15 +23,28 @@ import net.minecraft.world.World;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
-public class ItemArchaeoPickaxe extends ItemTool {
+public class ItemChisel extends ItemTool {
 
-	private boolean canTill;
-    private static final Set EFFECTIVE_ON = Sets.newHashSet(new Block[] {Blocks.activator_rail, Blocks.coal_ore, Blocks.cobblestone, Blocks.detector_rail, Blocks.diamond_block, Blocks.diamond_ore, Blocks.double_stone_slab, Blocks.golden_rail, Blocks.gold_block, Blocks.gold_ore, Blocks.ice, Blocks.iron_block, Blocks.iron_ore, Blocks.lapis_block, Blocks.lapis_ore, Blocks.lit_redstone_ore, Blocks.mossy_cobblestone, Blocks.netherrack, Blocks.packed_ice, Blocks.rail, Blocks.redstone_ore, Blocks.sandstone, Blocks.red_sandstone, Blocks.stone, Blocks.stone_slab});
+	private static final Set EFFECTIVE_ON = Sets.newHashSet(new Block[] {Blocks.cobblestone, Blocks.sandstone, Blocks.red_sandstone, Blocks.stone});
+	private static final Set BRONZE_SILK = Sets.newHashSet(new Block[] {Blocks.coal_ore, Blocks.ice, Blocks.iron_ore, Blocks.lapis_ore, Blocks.stone});
+	private static final Set DIAMOND_SILK = Sets.newHashSet(new Block[] {Blocks.coal_ore, Blocks.ice, Blocks.iron_ore, Blocks.lapis_ore, Blocks.stone, Blocks.diamond_ore, Blocks.gold_ore, Blocks.lit_redstone_ore, Blocks.redstone_ore});
+	private final ChiselType type;
+	private int chiselCounter;
+	private BlockPos chiselPos;
+	public static enum ChiselType
+	{
+		BRONZE(),
+		DIAMOND();
 
+		private ChiselType()
+		{
+		}
+	}
 
-	public ItemArchaeoPickaxe(ToolMaterial material, boolean canTill) {
+	public ItemChisel(ToolMaterial material, ChiselType type) {
 		super(2, material, EFFECTIVE_ON);
-		this.canTill = canTill;
+		this.type = type;
+		this.efficiencyOnProperMaterial*=0.5f;
 	}
 
 	@Override
@@ -42,13 +56,13 @@ public class ItemArchaeoPickaxe extends ItemTool {
 	@Override
 	public boolean canHarvestBlock(Block blockIn, ItemStack stack)
 	{
-		return this.getHarvestLevel(stack, "pickaxe") >= blockIn.getHarvestLevel(null);
+		return this.getHarvestLevel(stack, "pickaxe") >= blockIn.getHarvestLevel(blockIn.getStateFromMeta(0));
 	}
 
 	@Override
 	public boolean canHarvestBlock(Block blockIn)
 	{
-		return canHarvestBlock(blockIn,new ItemStack(this,1));
+		return canHarvestBlock(blockIn,new ItemStack(this,1)) && this.EFFECTIVE_ON.contains(blockIn);
 	}
 
 	/**
@@ -59,39 +73,40 @@ public class ItemArchaeoPickaxe extends ItemTool {
 	 */
 	public boolean onItemUse(ItemStack stack, EntityPlayer playerIn, World worldIn, BlockPos pos, EnumFacing side, float hitX, float hitY, float hitZ)
 	{
-		if (!playerIn.canPlayerEdit(pos.offset(side), side, stack) || !canTill)
+		if (!playerIn.canPlayerEdit(pos, side, stack))
 		{
 			return false;
 		}
-		else
+		IBlockState iblockstate = worldIn.getBlockState(pos);
+		Block block = iblockstate.getBlock();
+		if(((this.type == ChiselType.BRONZE && this.BRONZE_SILK.contains(block)) || (this.type == ChiselType.DIAMOND && this.DIAMOND_SILK.contains(block))) && !worldIn.isRemote)
 		{
-			int hook = net.minecraftforge.event.ForgeEventFactory.onHoeUse(stack, playerIn, worldIn, pos);
-			if (hook != 0) return hook > 0;
-
-			IBlockState iblockstate = worldIn.getBlockState(pos);
-			Block block = iblockstate.getBlock();
-
-			if (side != EnumFacing.DOWN && worldIn.isAirBlock(pos.up()))
+			if(pos.equals(chiselPos))
 			{
-				if (block == Blocks.grass)
+				chiselCounter++;
+			}
+			else
+			{
+				chiselPos = pos;
+				chiselCounter = 1;
+			}
+			if(chiselCounter == 5)
+			{
+				block.spawnAsEntity(worldIn, pos, new ItemStack(Item.getItemFromBlock(block),1,block.getDamageValue(worldIn, pos)));
+				worldIn.destroyBlock(pos, false);
+				if(!playerIn.capabilities.isCreativeMode)
 				{
-					return this.useHoe(stack, playerIn, worldIn, pos, Blocks.farmland.getDefaultState());
-				}
-
-				if (block == Blocks.dirt)
-				{
-					switch (ItemArchaeoPickaxe.SwitchDirtType.TYPE_LOOKUP[((BlockDirt.DirtType)iblockstate.getValue(BlockDirt.VARIANT)).ordinal()])
-					{
-					case 1:
-						return this.useHoe(stack, playerIn, worldIn, pos, Blocks.farmland.getDefaultState());
-					case 2:
-						return this.useHoe(stack, playerIn, worldIn, pos, Blocks.dirt.getDefaultState().withProperty(BlockDirt.VARIANT, BlockDirt.DirtType.DIRT));
-					}
+					stack.damageItem(1, playerIn);
 				}
 			}
-
-			return false;
+			return true;
 		}
+		if((this.type == ChiselType.BRONZE && this.BRONZE_SILK.contains(block)) || (this.type == ChiselType.DIAMOND && this.DIAMOND_SILK.contains(block)))
+		{
+			worldIn.playSoundEffect((double)((float)playerIn.posX + 0.5F), (double)((float)playerIn.posY + 0.5F), (double)((float)playerIn.posZ + 0.5F), block.soundTypeStone.getStepSound(), (block.soundTypeStone.getVolume() + 1.0F) / 2.0F, block.soundTypeStone.getFrequency() * 0.8F);
+			return true;
+		}
+		return false;
 	}
 
 	protected boolean useHoe(ItemStack stack, EntityPlayer player, World worldIn, BlockPos target, IBlockState newState)
